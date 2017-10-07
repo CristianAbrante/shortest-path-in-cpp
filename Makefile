@@ -1,14 +1,36 @@
-build: main.o ClassGraphicGrid.o Button.o
-	g++ -g -std=c++14 main.o ClassGraphicGrid.o Button.o -lsfml-graphics -lsfml-window -lsfml-system -o sfml
+# Makefile used to compile the project shortest-path-in-cpp.
+# Authors: Carlos Domínguez García, Juan Pablo Claros Romero, Cristian Abrante Dorta.
 
-main.o: main.cpp ClassGraphicGrid.hpp Button.h
-	g++ -c -g -std=c++14 -O3 main.cpp
-	
-ClassGraphicGrid.o: ClassGraphicGrid.hpp ClassGraphicGrid.cpp
-	g++ -c -g -std=c++14 -O3 ClassGraphicGrid.cpp
+# Varibles used for the compilation.
+CXX = g++
+BINARY = shortest-path-in-cpp
 
-Button.o: Button.h Button.cc
-	g++ -c -g -std=c++14 -O3 Button.cc
-	
+IDIR = include
+ODIR = obj
+
+_DEPS = ClassGraphicGrid.hpp Button.hpp
+DEPS = $(patsubst %, $(IDIR)/%, $(_DEPS))
+
+_OBJ = main.o ClassGraphicGrid.o Button.o
+OBJ = $(patsubst %, $(ODIR)/%, $(_OBJ))
+
+CXXFLAGS = -g -std=c++14 -I$(IDIR)
+SFMLFLAGS = -lsfml-graphics -lsfml-window -lsfml-system
+
+# If any option is selected the program will build.
+all: $(BINARY)
+
+# Creation of objects under obj/ folder.
+$(ODIR)/%.o: src/%.cpp $(DEPS)
+
+		@if [ ! -d $(ODIR) ]; then mkdir $(ODIR); fi
+
+		$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+# Compilation of the binary program.
+$(BINARY): $(OBJ)
+		$(CXX) -o $@ $^ $(CXXFLAGS) $(SFMLFLAGS)
+
 clean:
-	rm main.o ClassGraphicGrid.o sfml
+	rm -f $(ODIR)/*.o $(BINARY)
+	rm -r $(ODIR)

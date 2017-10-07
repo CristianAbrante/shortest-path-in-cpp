@@ -2,7 +2,8 @@
 // Created by cristian on 3/10/17.
 //
 
-#include "Button.h"
+#include "Button.hpp"
+
 Button::Button(sf::Vector2f position,
                sf::Texture &buttonTexture,
                sf::Vector2u imageCounter,

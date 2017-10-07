@@ -1,16 +1,16 @@
 #include "ClassGraphicGrid.hpp"
 
 GraphicGrid::GraphicGrid(
-    const sf::Vector2u& gridStart, 
+    const sf::Vector2u& gridStart,
     const sf::Vector2u& gridEnd,
-    const int M, 
+    const int M,
     const int N,
     const sf::Texture& spriteSheet,
     const sf::Vector2u& texSz,        // Size of each sprite texture in the sprite sheet
     const sf::Vector2u& defaultTexPos // Position of the texture in the sheet to put in the cell as default
-): M_( M ), 
+): M_( M ),
    N_( N ),
-   gridStart_( gridStart ), 
+   gridStart_( gridStart ),
    gridEnd_( gridEnd ),
    spriteSheet_( spriteSheet ),
    texSz_( texSz ),
@@ -52,42 +52,42 @@ GraphicGrid::GraphicGrid(
 
             // Bottom left vertex
             cells_[pos*4 + 0].position  = sf::Vector2f(
-                    gridStart.x + cellSz.x * x, 
-                    gridStart.y + cellSz.y * (y + 1) 
+                    gridStart.x + cellSz.x * x,
+                    gridStart.y + cellSz.y * (y + 1)
             );
-            cells_[pos*4 + 0].texCoords = sf::Vector2f( 
-                    texSz_.x  * defaultTexPos.x, 
-                    texSz_.y  * (defaultTexPos.y + 1) 
+            cells_[pos*4 + 0].texCoords = sf::Vector2f(
+                    texSz_.x  * defaultTexPos.x,
+                    texSz_.y  * (defaultTexPos.y + 1)
             );
 
             // Upper left vertex
-            cells_[pos*4 + 1].position  = sf::Vector2f( 
-                    gridStart.x + cellSz.x * x, 
-                    gridStart.y + cellSz.y * y 
+            cells_[pos*4 + 1].position  = sf::Vector2f(
+                    gridStart.x + cellSz.x * x,
+                    gridStart.y + cellSz.y * y
             );
-            cells_[pos*4 + 1].texCoords = sf::Vector2f( 
-                    texSz_.x  * defaultTexPos.x, 
-                    texSz_.y  * defaultTexPos.y 
+            cells_[pos*4 + 1].texCoords = sf::Vector2f(
+                    texSz_.x  * defaultTexPos.x,
+                    texSz_.y  * defaultTexPos.y
             );
 
             // Upper right vertex
-            cells_[pos*4 + 2].position  = sf::Vector2f( 
-                    gridStart.x + cellSz.x * (x + 1), 
-                    gridStart.y + cellSz.y * y 
-            );            
-            cells_[pos*4 + 2].texCoords = sf::Vector2f( 
-                    texSz_.x *  (defaultTexPos.x + 1), 
-                    texSz_.y  * defaultTexPos.y 
+            cells_[pos*4 + 2].position  = sf::Vector2f(
+                    gridStart.x + cellSz.x * (x + 1),
+                    gridStart.y + cellSz.y * y
+            );
+            cells_[pos*4 + 2].texCoords = sf::Vector2f(
+                    texSz_.x *  (defaultTexPos.x + 1),
+                    texSz_.y  * defaultTexPos.y
             );
 
             // Down right vertex
-            cells_[pos*4 + 3].position  = sf::Vector2f( 
-                    gridStart.x + cellSz.x * (x + 1), 
-                    gridStart.y + cellSz.y * (y + 1) 
+            cells_[pos*4 + 3].position  = sf::Vector2f(
+                    gridStart.x + cellSz.x * (x + 1),
+                    gridStart.y + cellSz.y * (y + 1)
             );
-            cells_[pos*4 + 3].texCoords = sf::Vector2f( 
-                    texSz_.x  * (defaultTexPos.x + 1), 
-                    texSz_.y  * (defaultTexPos.y + 1) 
+            cells_[pos*4 + 3].texCoords = sf::Vector2f(
+                    texSz_.x  * (defaultTexPos.x + 1),
+                    texSz_.y  * (defaultTexPos.y + 1)
             );
         }
 
@@ -109,28 +109,28 @@ void GraphicGrid::changeCellTexture( const sf::Vector2u& cellPos, const sf::Vect
     // Checking for errors
     if( cellPos.x >= M_  || cellPos.y >= N_ )
         throw "TODO";
-    
+
     // Translating position from the 2d array view that the user has to the real 1 dimensional array position
     unsigned pos = cellPos.x * N_ + cellPos.y;
-    
-    cells_[pos*4 + 0].texCoords = sf::Vector2f( 
+
+    cells_[pos*4 + 0].texCoords = sf::Vector2f(
             texSz_.x * texPosInSpriteSheet.x,
-            texSz_.y * (texPosInSpriteSheet.y + 1) 
+            texSz_.y * (texPosInSpriteSheet.y + 1)
     );
 
-    cells_[pos*4 + 1].texCoords = sf::Vector2f( 
+    cells_[pos*4 + 1].texCoords = sf::Vector2f(
             texSz_.x * texPosInSpriteSheet.x,
-            texSz_.y * texPosInSpriteSheet.y 
+            texSz_.y * texPosInSpriteSheet.y
     );
 
-    cells_[pos*4 + 2].texCoords = sf::Vector2f( 
-            texSz_.x * (texPosInSpriteSheet.x + 1), 
-            texSz_.y * texPosInSpriteSheet.y 
+    cells_[pos*4 + 2].texCoords = sf::Vector2f(
+            texSz_.x * (texPosInSpriteSheet.x + 1),
+            texSz_.y * texPosInSpriteSheet.y
     );
 
-    cells_[pos*4 + 3].texCoords = sf::Vector2f( 
-            texSz_.x * (texPosInSpriteSheet.x + 1), 
-            texSz_.y * (texPosInSpriteSheet.y + 1) 
+    cells_[pos*4 + 3].texCoords = sf::Vector2f(
+            texSz_.x * (texPosInSpriteSheet.x + 1),
+            texSz_.y * (texPosInSpriteSheet.y + 1)
     );
 
 }
