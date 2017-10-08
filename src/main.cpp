@@ -34,8 +34,9 @@ int main( int argc, char *argv[] )
     {
         GraphicGrid grid( gridStart, gridEnd, M, N, spriteSheetTexture, texSz, texPos );
 
-        Button nextButton({100, gridEnd.y}, buttonsTexture, {1,2}, {1,0});
-        Button runButton({window.getSize().x - 100 - nextButton.getSize().x, gridEnd.y}, buttonsTexture, {1,2}, {0,0});
+        Button nextButton({100, gridEnd.y}, window.getSize(), buttonsTexture, {1,2}, {1,0});
+        Button runButton({window.getSize().x - 100 - nextButton.getSize().x, gridEnd.y},  window.getSize(),
+                         buttonsTexture, {1,2}, {0,0});
 
         // For demo. When we press a key a cell texture will change,
         // this variable is to hold which cell to change
@@ -50,6 +51,11 @@ int main( int argc, char *argv[] )
                 {
                     case sf::Event::Closed:
                         window.close();
+                        break;
+
+                    case sf::Event::Resized:
+                        nextButton.resize(window.getSize());
+                        runButton.resize(window.getSize());
                         break;
 
                     // Close window on Ctrl + Q
@@ -78,13 +84,21 @@ int main( int argc, char *argv[] )
                                 posToChangeTexture = {0,0};
                         }
                         break;
+
+                    case sf::Event::MouseButtonPressed:
+                      if (nextButton.isClicked(sf::Mouse::getPosition(window))) {
+                        std::cout << "Next button pressed!!" << '\n';
+                      }
+                      if (runButton.isClicked(sf::Mouse::getPosition(window))) {
+                        std::cout << "Run button pressed!!" << '\n';
+                      }
                 }
             }
 
             window.clear( sf::Color::White );
             window.draw( grid );
-            nextButton.Draw(window);
-            runButton.Draw(window);
+            window.draw(nextButton);
+            window.draw(runButton);
             window.display();
         }
     }
