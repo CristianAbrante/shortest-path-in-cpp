@@ -2,48 +2,63 @@
 #include "ClassGraphicGrid.hpp"
 #include "Button.hpp"
 
+// This is defined below main
+void updateGridCamera( const GraphicGrid& grid, sf::View& camera );
+
+
 int main( int argc, char *argv[] )
 {
     sf::RenderWindow window(
         sf::VideoMode::getDesktopMode(),
-        "Sample program to test the grid"
+        "Shortest path"
     );
 
-    const unsigned M = 50   // Num cols in grid
-                 , N = 50;  // Num rows in grid
-
-    sf::Vector2u gridStart = { 100, 100 }   // Top left corner of the grid
-               , gridEnd   = { window.getSize().x - 100, window.getSize().y - 140 } // Bottom right
-               , texSz   = { 16, 16 }   // Size in pixels of each sprite texture
-               , texPos  = { 1, 0 };    // Which sprite image of the spritesheet to use
-
-    sf::Texture spriteSheetTexture;
-    if ( !spriteSheetTexture.loadFromFile( "sprites/sprites.png" ) )
-    {
-        std::cerr << "\n\nError loading sprites\n\n";
-        return -1;
-    }
-
-    sf::Texture buttonsTexture;
-    if ( !buttonsTexture.loadFromFile( "sprites/buttons.png" ) ) {
-        std::cerr << "\n\nError loading sprites\n\n";
-        return -1;
-    }
+    // Columns and rows of the grid
+    const unsigned M = 100   // Num cols in grid
+                 , N = 100;  // Num rows in grid
 
     try
     {
-        GraphicGrid grid( gridStart, gridEnd, M, N, spriteSheetTexture, texSz, texPos );
+        // Create grid
+        auto grid = GraphicGrid::init(
+            { 100, 100 },                 // Grid top left position
+            {                             // Grid bottom right position
+                window.getSize().x - 100,                
+                window.getSize().y - 140 
+            },
+            M, N,                         // Number of columns and rows of the grid
+            "sprites/sprites.png",        // Location of the sprite sheet
+            { 16, 16 },                   // The size of a single sprite image in the sheet
+            { 1, 0 }                      // The position of the default sprite image in the sheet
+        );
+        
+        // This will allow us to zoom and move the "camera" that shows the grid
+        sf::View gridCamera({
+            (float)grid.startPos().x,
+            (float)grid.startPos().y,
+            (float)grid.endPos().x,
+            (float)grid.endPos().y
+        });
+        
+        // Open texture for buttons
+        sf::Texture buttonsTexture;
+        if ( !buttonsTexture.loadFromFile( "sprites/buttons.png" ) ) {
+            std::cerr << "\n\nError loading sprites\n\n";
+            return -1;
+        }
 
-        Button nextButton({100, gridEnd.y}, window.getSize(), buttonsTexture, {1,2}, {1,0});
-        Button runButton({window.getSize().x - 100 - nextButton.getSize().x, gridEnd.y},  window.getSize(),
+        // Create buttons
+        Button nextButton({100, grid.endPos().y}, window.getSize(), buttonsTexture, {1,2}, {1,0});
+        Button runButton({window.getSize().x - 100 - nextButton.getSize().x, grid.endPos().y},  window.getSize(),
                          buttonsTexture, {1,2}, {0,0});
 
-        // For demo. When we press a key a cell texture will change,
+        // Dummy variable for demo. When we press a key a cell texture will change,
         // this variable is to hold which cell to change
         sf::Vector2u posToChangeTexture = {0, 0};
 
         while (window.isOpen())
         {
+            // Event loop
             sf::Event event;
             while (window.pollEvent(event))
             {
@@ -94,11 +109,23 @@ int main( int argc, char *argv[] )
                       }
                 }
             }
+            
+            // Update camera grid
+            updateGridCamera( grid, gridCamera );
 
+            // Clear screen
             window.clear( sf::Color::White );
+
+            // Draw grid
+            window.setView( gridCamera );
             window.draw( grid );
+            window.setView( window.getDefaultView() );
+
+            // Draw buttons
             window.draw(nextButton);
             window.draw(runButton);
+            
+            // Display drawings
             window.display();
         }
     }
@@ -108,4 +135,55 @@ int main( int argc, char *argv[] )
     }
 
     return 0;
+}
+
+
+void updateGridCamera( const GraphicGrid& grid, sf::View& camera ){
+    
+    // This is the quantity to add/substract to the current
+    // position and size to move and zoom the camera.
+    // Static because this value should not change in the execution
+    // of the program so we don't want to compute it every time.
+    static const sf::Vector2f offset = {
+        grid.numRows() / 100.0f,
+        grid.numCols() / 100.0f
+    };
+    
+    // These will hold the total offset to apply
+    // to the current position and size to perform the
+    // zoom and movement
+    sf::Vector2f moveOffset = {0.0f,0.0f}
+               , zoomOffset = {0.0f,0.0f};
+    
+    // Check user input for zoom in/out
+    if( sf::Keyboard::isKeyPressed( sf::Keyboard::Add ) ){
+        zoomOffset -= {offset.x, offset.x};
+    }
+    if( sf::Keyboard::isKeyPressed( sf::Keyboard::Subtract ) ){
+        zoomOffset += {offset.x, offset.x};
+    }
+
+    // Check user input for camera move
+    if( sf::Keyboard::isKeyPressed( sf::Keyboard::Right ) ){
+        moveOffset.x += offset.x;
+    }
+    if( sf::Keyboard::isKeyPressed( sf::Keyboard::Left ) ){
+        moveOffset.x -= offset.x;
+    }
+    if( sf::Keyboard::isKeyPressed( sf::Keyboard::Up ) ){
+        moveOffset.y -= offset.y;
+    }
+    if( sf::Keyboard::isKeyPressed( sf::Keyboard::Down ) ){
+        moveOffset.y += offset.y;
+    }
+    
+    // Update zoom
+    auto cameraSize = camera.getSize() + zoomOffset;
+    if( cameraSize.x < 1.0f ) cameraSize.x = 1.0f;
+    if( cameraSize.y < 1.0f ) cameraSize.y = 1.0f;
+
+    camera.setSize( cameraSize );
+
+    // Update position
+    camera.move( moveOffset );
 }

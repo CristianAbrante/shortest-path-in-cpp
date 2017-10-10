@@ -1,5 +1,35 @@
 #include "ClassGraphicGrid.hpp"
+#include <algorithm> // std::max
+#include <stdexcept> // std::invalid_argument
 
+GraphicGrid GraphicGrid::init(
+    const sf::Vector2u& gridStart,    // Point in the window that is the top left corner of the grid
+    const sf::Vector2u& gridEnd,      // Point in the window that is the bottom right corner of the grid
+    const int M,                      // Number of columns in the grid
+    const int N,                      // Number of rows in the grid
+    const std::string& spriteSheetLocation,   // Location in the file system of the spriteSheet to use
+    const sf::Vector2u& texSz,        // Size of each sprite texture in the sprite sheet
+    const sf::Vector2u& defaultTexPos // Position of the texture sprite in the sheet to put in the cells as default        
+){
+    // Check that the number of grid rows and columns are positive and one at least
+    if( M < 1  || N < 1 )
+        throw std::invalid_argument( "Invalid number of row/columns." );
+
+    // Check that the grid position is legal. Because we don't have the
+    // window size we can only check that the start point is really a top left corner
+    // with respect to the grid end point
+    if( gridStart.x >= gridEnd.x  || gridStart.y >= gridEnd.y )
+        throw std::invalid_argument( "Invalid grid size." );
+
+    sf::Texture tex;
+    if ( !tex.loadFromFile(spriteSheetLocation) )
+        throw std::invalid_argument( "Cannot open sprite sheet file." );
+
+    return GraphicGrid( gridStart, gridEnd, M, N, tex, texSz, defaultTexPos );
+}
+
+
+// Constructor
 GraphicGrid::GraphicGrid(
     const sf::Vector2u& gridStart,
     const sf::Vector2u& gridEnd,
@@ -8,29 +38,21 @@ GraphicGrid::GraphicGrid(
     const sf::Texture& spriteSheet,
     const sf::Vector2u& texSz,        // Size of each sprite texture in the sprite sheet
     const sf::Vector2u& defaultTexPos // Position of the texture in the sheet to put in the cell as default
-): M_( M ),
+): sf::Drawable(),
+   M_( M ),
    N_( N ),
    gridStart_( gridStart ),
    gridEnd_( gridEnd ),
    spriteSheet_( spriteSheet ),
    texSz_( texSz ),
-   cells_( sf::Quads, 0 ) // We indicate the real number of elements once we make sure that
+   cells_( sf::Quads, 0 ), // We indicate the real number of elements once we make sure that
                           // the parameters are valid
+   MIN_CELL_SZ( 10 )  
 {
-    // Check that the number of grid rows and columns are positive and one at least
-    if( M_ < 1  || N_ < 1 )
-        throw "TODO";
-
-    // Check that the grid position is legal. Because we don't have the
-    // window size we can only check that the start point is really a top left corner
-    // with respect to the grid end point
-    if( gridStart_.x >= gridEnd_.x  || gridStart_.y >= gridEnd_.y )
-        throw "TODO";
-
     // Auxiliar variable that holds the width and height that will have each cell in the grid
     const sf::Vector2u cellSz = {
-        (gridEnd_.x - gridStart_.x) / M_,   // x coordinate
-        (gridEnd_.y - gridStart_.y) / N_    // y coordinate
+        std::max( MIN_CELL_SZ, ((gridEnd_.x - gridStart_.x) / M_) ),  // x coordinate
+        std::max( MIN_CELL_SZ, ((gridEnd_.y - gridStart_.y) / N_) )   // y coordinate
     };
 
     // Resize the cell vertices array
