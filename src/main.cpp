@@ -2,6 +2,48 @@
 #include "ClassGraphicGrid.hpp"
 #include "Button.hpp"
 
+//class GridCamera
+//{
+//  private:
+//      sf::View view_;
+//      const sf::Vector2f offset_;
+//
+//  public:
+//      GridCamera( const GraphicGrid& grid ):
+//        view_({
+//            (float)grid.startPos().x,
+//            (float)grid.startPos().y,
+//            (float)grid.endPos().x,
+//            (float)grid.endPos().y
+//        }),
+//        offset_({
+//            grid.numRows() / 100.0f,
+//            grid.numCols() / 100.0f
+//        })
+//      {}
+//      
+//      GridCamera* zoom( const sf::Vector2f& newSize )
+//      {
+//        view_.setSize(
+//            (newSize.x < 1.0f) ? 1.0f : newSize.x,
+//            (newSize.y < 1.0f) ? 1.0f : newSize.y              
+//        );
+//        
+//        return this;
+//      }
+//      
+//      GridCamera* move( const sf::Vector2f& offsetFactor )
+//      {
+//        view_.move(
+//            offset_.x * offsetFactor.x,
+//            offset_.y * offsetFactor.y
+//        );
+//        
+//        return this;
+//      }
+//    
+//};
+
 // This is defined below main
 void updateGridCamera( const GraphicGrid& grid, sf::View& camera );
 
@@ -14,8 +56,8 @@ int main( int argc, char *argv[] )
     );
 
     // Columns and rows of the grid
-    const unsigned M = 100   // Num cols in grid
-                 , N = 100;  // Num rows in grid
+    const unsigned M = 50   // Num cols in grid
+                 , N = 50;  // Num rows in grid
 
     try
     {
@@ -23,7 +65,7 @@ int main( int argc, char *argv[] )
         auto grid = GraphicGrid::init(
             { 100, 100 },                 // Grid top left position
             {                             // Grid bottom right position
-                window.getSize().x - 100,                
+                window.getSize().x - 100,
                 window.getSize().y - 140 
             },
             M, N,                         // Number of columns and rows of the grid
@@ -39,7 +81,7 @@ int main( int argc, char *argv[] )
             (float)grid.endPos().x,
             (float)grid.endPos().y
         });
-        
+                
         // Open texture for buttons
         sf::Texture buttonsTexture;
         if ( !buttonsTexture.loadFromFile( "sprites/buttons.png" ) ) {
@@ -55,7 +97,10 @@ int main( int argc, char *argv[] )
         // Dummy variable for demo. When we press a key a cell texture will change,
         // this variable is to hold which cell to change
         sf::Vector2u posToChangeTexture = {0, 0};
-
+        bool isMousePressed = false;
+        sf::Vector2i mousePosition;
+        float wheelScroll = 0.0f;
+        
         while (window.isOpen())
         {
             // Event loop
@@ -99,6 +144,14 @@ int main( int argc, char *argv[] )
                                 posToChangeTexture = {0,0};
                         }
                         break;
+                    
+                    case sf::Event::MouseButtonReleased:
+                        isMousePressed = false;
+                        break;
+                        
+                    case sf::Event::MouseWheelScrolled:
+                        wheelScroll = event.mouseWheelScroll.delta;
+                        break;
 
                     case sf::Event::MouseButtonPressed:
                       if (nextButton.isClicked(sf::Mouse::getPosition(window))) {
@@ -107,7 +160,60 @@ int main( int argc, char *argv[] )
                       if (runButton.isClicked(sf::Mouse::getPosition(window))) {
                         std::cout << "Run button pressed!!" << '\n';
                       }
+                      if( sf::Mouse::getPosition().y < (int)grid.endPos().y ){
+                          isMousePressed = true;
+                          mousePosition = sf::Mouse::getPosition( window );
+                      }
                 }
+            }
+             
+            if( wheelScroll != 0.0f )
+            {
+                const sf::Vector2f offset = {
+                    grid.numRows() / 100.0f,
+                    grid.numCols() / 100.0f
+                };
+
+                // Update zoom
+                auto cameraSize = gridCamera.getSize() + offset * wheelScroll * 10.0f;
+
+                if( cameraSize.x < 1.0f ) cameraSize.x = 1.0f;
+                if( cameraSize.y < 1.0f ) cameraSize.y = 1.0f;
+                gridCamera.setSize( cameraSize );
+                
+                wheelScroll = 0.0f;
+            }
+            
+            if( isMousePressed )
+            {
+                const sf::Vector2f offset = {
+                    grid.numRows() / 100.0f,
+                    grid.numCols() / 100.0f
+                };
+
+                sf::Vector2f offsetSign = {
+                    (float)(mousePosition.x - sf::Mouse::getPosition( window ).x) / 100,
+                    (float)(mousePosition.y - sf::Mouse::getPosition( window ).y) / 100
+                };
+
+                // Update position
+                gridCamera.move({
+                    offset.x * offsetSign.x,
+                    offset.y * offsetSign.y
+                });
+                
+            }
+            
+            // Reset camera
+            if( sf::Keyboard::isKeyPressed(sf::Keyboard::R) )
+            {
+                gridCamera = sf::View({
+                    (float)grid.startPos().x,
+                    (float)grid.startPos().y,
+                    (float)grid.endPos().x,
+                    (float)grid.endPos().y
+                });
+
             }
             
             // Update camera grid
@@ -179,9 +285,9 @@ void updateGridCamera( const GraphicGrid& grid, sf::View& camera ){
     
     // Update zoom
     auto cameraSize = camera.getSize() + zoomOffset;
+    
     if( cameraSize.x < 1.0f ) cameraSize.x = 1.0f;
     if( cameraSize.y < 1.0f ) cameraSize.y = 1.0f;
-
     camera.setSize( cameraSize );
 
     // Update position
