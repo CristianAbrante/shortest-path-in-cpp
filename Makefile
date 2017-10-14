@@ -8,10 +8,10 @@ BINARY = shortest-path-in-cpp
 IDIR = include
 ODIR = obj
 
-_DEPS = ClassGraphicGrid.hpp Button.hpp ProblemSpecification.hpp
+_DEPS = ClassGraphicGrid.hpp Button.hpp ProblemSpecification.hpp GridCamera.hpp
 DEPS = $(patsubst %, $(IDIR)/%, $(_DEPS))
 
-_OBJ = main.o ClassGraphicGrid.o Button.o ProblemSpecification.o
+_OBJ = main.o ClassGraphicGrid.o Button.o ProblemSpecification.o GridCamera.o
 OBJ = $(patsubst %, $(ODIR)/%, $(_OBJ))
 
 CXXFLAGS = -g -std=c++14 -I$(IDIR)

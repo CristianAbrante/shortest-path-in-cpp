@@ -5,94 +5,10 @@
 #include "ClassGraphicGrid.hpp"
 #include "Button.hpp"
 #include "ProblemSpecification.hpp"
-
-class GridCamera
-{
-  private:
-      sf::View view_;
-
-      // This is used to reset the view to the original value
-      sf::View defaultView_;
-
-      // This is the quantity to add/subtract to the current
-      // position and size to move and zoom the camera.
-      const sf::Vector2f offset_;
-
-  public:
-      GridCamera( const GraphicGrid& grid );
-
-      // These methods set the camera size and position respectively to the current
-      // size * offset_ * offsetFactor. The "this" object pointer is returned
-      // so we can chain methods calls if we want.
-      GridCamera* zoom( sf::Vector2f offsetFactor );
-      GridCamera* move( const sf::Vector2f& offsetFactor );
-
-      // Set the camera to the default view
-      GridCamera* resetCamera();
-
-      // Return the view so we can set the window view
-      const sf::View& getView()const { return view_; }
-};
-
-GridCamera::GridCamera(const GraphicGrid& grid):
-    view_({
-        (float)grid.startPos().x,
-        (float)grid.startPos().y,
-        (float)grid.endPos().x,
-        (float)grid.endPos().y
-    }),
-    defaultView_( view_ ),
-    offset_({
-        grid.numRows() / 100.0f,
-        grid.numCols() / 100.0f
-    })
-{}
-
-GridCamera* GridCamera::zoom( sf::Vector2f offsetFactor )
-{
-    offsetFactor.x *= offset_.x;
-    offsetFactor.y *= offset_.y;
-
-    offsetFactor += view_.getSize();
-
-    view_.setSize(
-        (offsetFactor.x < 1.0f) ? 1.0f : offsetFactor.x,
-        (offsetFactor.y < 1.0f) ? 1.0f : offsetFactor.y
-    );
-
-
-    return this;
-}
-
-GridCamera* GridCamera::move( const sf::Vector2f& offsetFactor )
-{
-    view_.move(
-        offset_.x * offsetFactor.x,
-        offset_.y * offsetFactor.y
-    );
-
-    return this;
-}
-
-GridCamera* GridCamera::resetCamera()
-{
-    view_ = defaultView_;
-    return this;
-}
-
-
-
-
+#include "GridCamera.hpp"
 
 // This is defined below main
 void updateGridCameraFromKeyboardInput( GridCamera& camera );
-
-
-
-
-
-
-
 
 
 int main( int argc, char *argv[] )
@@ -199,7 +115,26 @@ int main( int argc, char *argv[] )
                         runButton.resize(window.getSize());
                         break;
 
+                    /*
+                    // This is for demo only
+                    // When the user enters any letter we show it and change the texture of a cell
+                    case sf::Event::TextEntered:
+                        // Update next cell to change the texture
+                        grid.changeCellTexture( posToChangeTexture, {2,0} );
+
+                        // Update the cell to change next
+                        posToChangeTexture.x += 1;
+                        if (posToChangeTexture.x >= new_problem.row())
+                        {
+                            posToChangeTexture.x = 0;
+                            posToChangeTexture.y += 1;
+                            if (posToChangeTexture.y >= new_problem.column())
+                                posToChangeTexture = {0,0};
+                        }
+                        break;
+                    */
                     // Listen for mouse wheel scroll to zoom in/out the camera
+
                     case sf::Event::MouseWheelScrolled:
                     {
                         float offsetFactor = event.mouseWheelScroll.delta * 10.0f;

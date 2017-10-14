@@ -1,3 +1,4 @@
 *.o
 .dropbox
 shortest-path-in-cpp
+*.json
