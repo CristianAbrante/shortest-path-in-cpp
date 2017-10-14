@@ -1,11 +1,14 @@
+
+
 #include <iostream>
 #include <stdexcept> // std::invalid_argument
 #include <fstream>
 
-#include "ClassGraphicGrid.hpp"
 #include "Button.hpp"
-#include "ProblemSpecification.hpp"
+#include "ClassGraphicGrid.hpp"
 #include "GridCamera.hpp"
+#include "ProblemSpecification.hpp"
+
 
 // This is defined below main
 void updateGridCameraFromKeyboardInput( GridCamera& camera );
@@ -21,24 +24,15 @@ int main( int argc, char *argv[] )
     try
     {
 
-        std::ifstream textFile;
+        std::string file_name;
 
-        // We open the file that contains the specification
-        // of our problem.
         if (argc >= 2) {
-          textFile.open(argv[1]);
+          file_name = argv[1];
         } else {
-          // TODO: Look for default file
-          //textFile.open("test/default.txt");
-          throw std::invalid_argument("Expected file with problem configuration.");
+          file_name = "";
         }
 
-        if (!textFile.is_open()) {
-          std::clog << "Hola incorrect" << '\n';
-          throw std::invalid_argument("Incorrect file of specifications.");
-        }
-
-        problemSpecification new_problem(textFile);
+        problemSpecification new_problem(file_name);
 
         // Create grid
         auto grid = GraphicGrid::init(
@@ -47,7 +41,8 @@ int main( int argc, char *argv[] )
                 window.getSize().x - 100,
                 window.getSize().y - 140
             },
-            new_problem.row(), new_problem.column(),// Number of columns and rows of the grid
+            new_problem.rows(),
+            new_problem.columns(),           // Number of columns and rows of the grid
             "sprites/sprite-sheet2.png",   // Location of the sprite sheet
             { 32, 32 },                   // The size of a single sprite image in the sheet
             { 0, 0 }                      // The position of the default sprite image in the sheet
@@ -56,6 +51,7 @@ int main( int argc, char *argv[] )
         // Set obstacles in grid
         for( int i = 0; i < new_problem.getNumberOfObstaces(); ++i )
         {
+          //std::clog << new_problem.getObstacle(i).x << " " << new_problem.getObstacle(i).y << '\n';
           const auto& pos = new_problem.getObstacle(i);
           grid.changeCellTexture( {pos.x, pos.y}, {2,0} );
         }
