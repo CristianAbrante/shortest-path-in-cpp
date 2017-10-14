@@ -1,24 +1,26 @@
 #include <iostream>
 #include <stdexcept> // std::invalid_argument
+#include <fstream>
 
 #include "ClassGraphicGrid.hpp"
 #include "Button.hpp"
+#include "ProblemSpecification.hpp"
 
 class GridCamera
 {
   private:
       sf::View view_;
-      
+
       // This is used to reset the view to the original value
       sf::View defaultView_;
-    
+
       // This is the quantity to add/subtract to the current
       // position and size to move and zoom the camera.
       const sf::Vector2f offset_;
 
   public:
       GridCamera( const GraphicGrid& grid );
-      
+
       // These methods set the camera size and position respectively to the current
       // size * offset_ * offsetFactor. The "this" object pointer is returned
       // so we can chain methods calls if we want.
@@ -26,8 +28,8 @@ class GridCamera
       GridCamera* move( const sf::Vector2f& offsetFactor );
 
       // Set the camera to the default view
-      GridCamera* resetCamera();      
-      
+      GridCamera* resetCamera();
+
       // Return the view so we can set the window view
       const sf::View& getView()const { return view_; }
 };
@@ -45,7 +47,7 @@ GridCamera::GridCamera(const GraphicGrid& grid):
         grid.numCols() / 100.0f
     })
 {}
-    
+
 GridCamera* GridCamera::zoom( sf::Vector2f offsetFactor )
 {
     offsetFactor.x *= offset_.x;
@@ -55,9 +57,9 @@ GridCamera* GridCamera::zoom( sf::Vector2f offsetFactor )
 
     view_.setSize(
         (offsetFactor.x < 1.0f) ? 1.0f : offsetFactor.x,
-        (offsetFactor.y < 1.0f) ? 1.0f : offsetFactor.y              
+        (offsetFactor.y < 1.0f) ? 1.0f : offsetFactor.y
     );
-    
+
 
     return this;
 }
@@ -82,8 +84,6 @@ GridCamera* GridCamera::resetCamera()
 
 
 
-
-
 // This is defined below main
 void updateGridCameraFromKeyboardInput( GridCamera& camera );
 
@@ -102,29 +102,70 @@ int main( int argc, char *argv[] )
         "Shortest path"
     );
 
-    // Columns and rows of the grid
-    const unsigned M = 100   // Num cols in grid
-                 , N = 100;  // Num rows in grid
-
     try
     {
+
+        std::ifstream textFile;
+
+        // We open the file that contains the specification
+        // of our problem.
+        if (argc >= 2) {
+          textFile.open(argv[1]);
+        } else {
+          // TODO: Look for default file
+          //textFile.open("test/default.txt");
+          throw std::invalid_argument("Expected file with problem configuration.");
+        }
+
+        if (!textFile.is_open()) {
+          std::clog << "Hola incorrect" << '\n';
+          throw std::invalid_argument("Incorrect file of specifications.");
+        }
+
+        problemSpecification new_problem(textFile);
+
         // Create grid
         auto grid = GraphicGrid::init(
             { 100, 100 },                 // Grid top left position
             {                             // Grid bottom right position
                 window.getSize().x - 100,
-                window.getSize().y - 140 
+                window.getSize().y - 140
             },
-            M, N,                         // Number of columns and rows of the grid
-            "sprites/sprite-sheet.png",   // Location of the sprite sheet
+            new_problem.row(), new_problem.column(),// Number of columns and rows of the grid
+            "sprites/sprite-sheet2.png",   // Location of the sprite sheet
             { 32, 32 },                   // The size of a single sprite image in the sheet
             { 0, 0 }                      // The position of the default sprite image in the sheet
         );
-        
+
+        // Set obstacles in grid
+        for( int i = 0; i < new_problem.getNumberOfObstaces(); ++i )
+        {
+          const auto& pos = new_problem.getObstacle(i);
+          grid.changeCellTexture( {pos.x, pos.y}, {2,0} );
+        }
+
+        // Set car in grid
+        grid.changeCellTexture(
+          {
+            new_problem.car_position().x,
+            new_problem.car_position().y
+          },
+          {1, 0}
+        );
+
+        // Set goal in grid
+        grid.changeCellTexture(
+          {
+            new_problem.final_position().x,
+            new_problem.final_position().y
+          },
+          {0, 1}
+        );
+
         // This object will allow us to zoom and move the "camera" that shows the grid
         GridCamera gridCamera( grid );
-                
-        
+
+
         // Open sprite sheet file for buttons
         sf::Texture buttonsTexture;
         if ( !buttonsTexture.loadFromFile( "sprites/buttons.png" ) ) {
@@ -136,15 +177,11 @@ int main( int argc, char *argv[] )
         Button runButton({window.getSize().x - 100 - nextButton.getSize().x, grid.endPos().y},  window.getSize(),
                          buttonsTexture, {1,2}, {0,0});
 
-        // Dummy variable for demo. When we press a key a cell texture will change,
-        // this variable is to hold which cell to change
-        sf::Vector2u posToChangeTexture = {0, 0};
-
         // These variable are needed to track the mouse position to update the camera
         // when the user wants to move it with the mouse
         bool isMousePressed = false;
         sf::Vector2i mousePositionWhenUserClicked;
-        
+
         while (window.isOpen())
         {
             // Event loop
@@ -162,24 +199,7 @@ int main( int argc, char *argv[] )
                         runButton.resize(window.getSize());
                         break;
 
-                    // This is for demo only
-                    // When the user enters any letter we show it and change the texture of a cell
-                    case sf::Event::TextEntered:
-                        // Update next cell to change the texture
-                        grid.changeCellTexture( posToChangeTexture, {2,0} );
-
-                        // Update the cell to change next
-                        posToChangeTexture.x += 1;
-                        if (posToChangeTexture.x >= M)
-                        {
-                            posToChangeTexture.x = 0;
-                            posToChangeTexture.y += 1;
-                            if (posToChangeTexture.y >= N)
-                                posToChangeTexture = {0,0};
-                        }
-                        break;
-                                            
-                    // Listen for mouse wheel scroll to zoom in/out the camera                    
+                    // Listen for mouse wheel scroll to zoom in/out the camera
                     case sf::Event::MouseWheelScrolled:
                     {
                         float offsetFactor = event.mouseWheelScroll.delta * 10.0f;
@@ -202,7 +222,7 @@ int main( int argc, char *argv[] )
                           mousePositionWhenUserClicked = sf::Mouse::getPosition( window );
                       }
                       break;
-                    
+
                     // When the user releases the mouse button we have to stop
                     // updating the camera according to the mouse
                     case sf::Event::MouseButtonReleased:
@@ -210,21 +230,21 @@ int main( int argc, char *argv[] )
                         break;
                 }
             }
-            
+
             // Close window on Ctrl + Q
             if( sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)
             &&  sf::Keyboard::isKeyPressed(sf::Keyboard::Q) )
             {
                 window.close();
-            }            
-            
+            }
+
             // Reset camera view on Ctrl + R
             if( sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)
             &&  sf::Keyboard::isKeyPressed(sf::Keyboard::R) )
             {
                 gridCamera.resetCamera();
             }
- 
+
             // Update camera position from user mouse input
             if( isMousePressed )
             {
@@ -232,10 +252,10 @@ int main( int argc, char *argv[] )
                     (float)(mousePositionWhenUserClicked.x - sf::Mouse::getPosition( window ).x) / 100,
                     (float)(mousePositionWhenUserClicked.y - sf::Mouse::getPosition( window ).y) / 100
                 };
-                
+
                 gridCamera.move( offsetFactor );
             }
-                        
+
             // Update grid camera position and zoom from the user keyboard input
             updateGridCameraFromKeyboardInput( gridCamera );
 
@@ -250,7 +270,7 @@ int main( int argc, char *argv[] )
             // Draw buttons
             window.draw(nextButton);
             window.draw(runButton);
-            
+
             // Display drawings
             window.display();
         }
@@ -274,7 +294,7 @@ void updateGridCameraFromKeyboardInput( GridCamera& camera ){
     // zoom and movement
     sf::Vector2f moveOffset = {0.0f,0.0f}
                , zoomOffset = {0.0f,0.0f};
-    
+
     // Check user input for zoom in/out
     if( sf::Keyboard::isKeyPressed( sf::Keyboard::Add ) ){
         zoomOffset -= {1.0f, 1.0f};
@@ -296,7 +316,7 @@ void updateGridCameraFromKeyboardInput( GridCamera& camera ){
     if( sf::Keyboard::isKeyPressed( sf::Keyboard::Down ) ){
         moveOffset.y += 1.0f;
     }
-    
+
     // Update zoom
     camera.zoom( zoomOffset );
 
