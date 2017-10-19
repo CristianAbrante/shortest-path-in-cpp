@@ -1,4 +1,3 @@
-
 #include "GridCamera.hpp"
 
 GridCamera::GridCamera(const GraphicGrid& grid):
@@ -22,11 +21,11 @@ GridCamera* GridCamera::zoom( sf::Vector2f offsetFactor )
 
     offsetFactor += view_.getSize();
 
-    view_.setSize(
-        (offsetFactor.x < 1.0f) ? 1.0f : offsetFactor.x,
-        (offsetFactor.y < 1.0f) ? 1.0f : offsetFactor.y
-    );
-
+    
+    if( offsetFactor.x > 1.0f  &&  offsetFactor.y > 1.0f )
+    {
+        view_.setSize( offsetFactor.x, offsetFactor.y );
+    }
 
     return this;
 }
