@@ -10,7 +10,8 @@
 #include "Node.hpp"
 
 using HeuristicFunction = std::function<double(int, int, int, int)>;
-std::vector<HeuristicFunction> heuristicFunctions = {
+
+const std::vector<HeuristicFunction> heuristicFunctions = {
     [](int x, int y, int endX, int endY){ return 0; }
 };
 
@@ -39,6 +40,7 @@ class NodeSet
         return( find(toFind) != nodes_.end() );
     }    
     
+    // Returns the node with the minimum value
     Node getLowest()const
     {
         if( !empty() )
@@ -67,23 +69,22 @@ class NodeSet
             }
     }
     
-    // Returns whether the element was inserted or not
+    // Returns whether the element was already in the set or not
     bool insertAndKeepMinimum( const Node& n ) 
     {
         auto oldElement = find( n );
         
-        // If it is a new element we insert it
+        // If it is a new element we insert it and return true
         if( oldElement == nodes_.end() )
         {
-            nodes_.push_back(n);
+            nodes_.push_back( n );
             return true;
         }
-        // Else we keep the minimum
-        else if( n < *oldElement )
+        // If it was already in the set we keep the minimum
+        if( n < *oldElement )
         {
             nodes_.erase( oldElement );
             nodes_.push_back( n );
-            return true;
         }
 
         return false;        
@@ -95,9 +96,9 @@ class NodeSet
 class AStar
 {
   private:
-    std::set<Node> openSet_
-                 , closeSet_
-                 , obstacles_;
+    NodeSet openSet_
+          , closeSet_
+          , obstacles_;
     int h_;  // Position of the heuristic function array
     bool finished_;
     Node startNode_
@@ -115,7 +116,7 @@ class AStar
         unsigned N, unsigned M,
         unsigned startX, unsigned startY, 
         unsigned endX, unsigned endY,
-        const std::set<Node>& obstacles,
+        const NodeSet& obstacles,
         unsigned h
     ):
       N_( N ), M_( M ), 
@@ -151,7 +152,7 @@ class AStar
         }
         
         // Get node with lowest f value
-        auto current = *openSet_.begin();
+        auto current = openSet_.getLowest();
         
         // Check if current node is the goal
         if( current == endNode_ )
@@ -169,52 +170,32 @@ class AStar
         // Check current node neighbours
         for( int i = 0; i < Node::NEIGHBOURS.size(); ++i )
         {
-            auto pos = current.pos();
-            pos.x += Node::NEIGHBOURS[i].x;
-            pos.y += Node::NEIGHBOURS[i].y;
+            const auto& pos = current.pos();
+            int posX = pos.x + Node::NEIGHBOURS[i].x
+              , posY = pos.y + Node::NEIGHBOURS[i].y;
 
             // Checking boundaries. If this is not a valid node we skip it
-            if( pos.x <= 0  ||  pos.x >= M_  ||  pos.y <= 0  ||  pos.y >= N_ ) 
+            if( posX <= 0  ||  posX >= M_  ||  posY <= 0  ||  posY >= N_ ) 
                 continue;
 
             // Construct neighbour node
-            auto neighbour = Node( pos, current.g() + 1, &current );
+            auto neighbour = Node( posX, posY, current.g() + 1, &current );
 
             // Checking obstacles. If this node is an obstacle we skip it
-            if( obstacles_.count(neighbour) == 1 )
+            if( obstacles_.contains(neighbour) )
                 continue;
                         
             // If the neighbour is already in the close set we do nothing
             // because it is already optimal
-            if( closeSet_.count(neighbour) == 1 )
+            if( closeSet_.contains(neighbour) )
                 continue;
-            
-            // If the neighbour is not in the open set we add it
-            auto insertResult = openSet_.insert( neighbour );
-            
-            if( insertResult.second == true ) // True if the node was added to the set
-            {
+  
+            // Try to add neighbour to the open set. If it is already in the
+            // open set we update the cost of it to the minimum one.
+            // If it was a new node this will return true and we 
+            // have to keep track of it in the last additions
+            if( openSet_.insertAndKeepMinimum( neighbour ) )
                 lastAdditionsToOpen.push_back( neighbour.pos() );
-            }
-            // If the neighbour is already in the open set we take it
-            // to compare it with the new node to see which one is better
-            else
-            {
-                // Take the node that was in the set
-                Node oldNode = *insertResult.first;
-                
-                // Compare the costs to see which one is lower
-                // No need to add the heuristic because the nodes are the same
-                // so the have the same heuristic value
-                // If the new node is the best then we have to swap it
-                // else we leave the set the same
-                if( neighbour.g() < oldNode.g() )
-                {
-                    openSet_.erase( insertResult.first );
-                    openSet_.insert( neighbour );
-                    lastAdditionsToOpen.push_back( neighbour.pos() );
-                }
-            }
        }
     }
     
