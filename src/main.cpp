@@ -1,5 +1,3 @@
-
-
 #include <iostream>
 #include <stdexcept> // std::invalid_argument
 #include <fstream>
@@ -8,6 +6,7 @@
 #include "ClassGraphicGrid.hpp"
 #include "GridCamera.hpp"
 #include "ProblemSpecification.hpp"
+#include "AStar.hpp"
 
 
 // This is defined below main

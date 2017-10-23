@@ -8,7 +8,7 @@ BINARY = shortest-path-in-cpp
 IDIR = include
 ODIR = obj
 
-_DEPS = ClassGraphicGrid.hpp Button.hpp ProblemSpecification.hpp GridCamera.hpp
+_DEPS = ClassGraphicGrid.hpp Button.hpp ProblemSpecification.hpp GridCamera.hpp Node.hpp AStar.hpp
 DEPS = $(patsubst %, $(IDIR)/%, $(_DEPS))
 
 _OBJ = main.o ClassGraphicGrid.o Button.o ProblemSpecification.o GridCamera.o
