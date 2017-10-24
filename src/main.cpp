@@ -52,9 +52,10 @@ int main( int argc, char *argv[] )
         for( int i = 0; i < new_problem.getNumberOfObstaces(); ++i )
         {
           const auto& pos = new_problem.getObstacle(i);
-          
           grid.changeCellTexture( {(unsigned)pos.x, (unsigned)pos.y}, {2,0} );
-          obstacles.insert( {(unsigned)pos.x, (unsigned)pos.y} );
+
+          Node node = {(unsigned)pos.x, (unsigned)pos.y};
+          obstacles.insert( &node );
         }
 
         // Set car in grid

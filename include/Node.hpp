@@ -31,9 +31,9 @@ class Node
     double g()const{ return costFromStart_; }
     double h()const{ return heuristicValue_; }
     
-    const Node *const parent()const{ return parent_; }
-    Node *updateParent( Node *parent ){ parent_ = parent; return this; }
-    Node *updateCost( int newCost ){ if( newCost >= 0 )costFromStart_ = newCost; return this; }
+    Node* parent()const{ return parent_; }
+    Node* updateParent( Node *parent ){ parent_ = parent; return this; }
+    Node* updateCost( int newCost ){ if( newCost >= 0 )costFromStart_ = newCost; return this; }
     
     bool operator==( const Node& that )const{ return( x_ == that.x_  &&  y_ == that.y_ ); }
     bool operator<( const Node& that )const{ return( f() < that.f() ); }
