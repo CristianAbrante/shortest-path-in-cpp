@@ -41,18 +41,20 @@ int main( int argc, char *argv[] )
                 window.getSize().y - 140
             },
             new_problem.rows(),
-            new_problem.columns(),           // Number of columns and rows of the grid
-            "sprites/sprite-sheet2.png",   // Location of the sprite sheet
+            new_problem.columns(),
+            "sprites/sprite-sheet.png",   // Location of the sprite sheet
             { 32, 32 },                   // The size of a single sprite image in the sheet
             { 0, 0 }                      // The position of the default sprite image in the sheet
         );
 
+        NodeSet obstacles;
         // Set obstacles in grid
         for( int i = 0; i < new_problem.getNumberOfObstaces(); ++i )
         {
-          //std::clog << new_problem.getObstacle(i).x << " " << new_problem.getObstacle(i).y << '\n';
           const auto& pos = new_problem.getObstacle(i);
-          grid.changeCellTexture( {pos.x, pos.y}, {2,0} );
+          
+          grid.changeCellTexture( {(unsigned)pos.x, (unsigned)pos.y}, {2,0} );
+          obstacles.insert( {(unsigned)pos.x, (unsigned)pos.y} );
         }
 
         // Set car in grid
@@ -73,6 +75,14 @@ int main( int argc, char *argv[] )
           {0, 1}
         );
 
+        AStar shortestPathFinder(
+            new_problem.rows(), new_problem.columns(),
+            new_problem.car_position().x, new_problem.car_position().y,
+            new_problem.final_position().x, new_problem.final_position().y,
+            obstacles, 
+            new_problem.heuristic() // Heuristic function to use
+        );
+        
         // This object will allow us to zoom and move the "camera" that shows the grid
         GridCamera gridCamera( grid );
 
@@ -109,27 +119,8 @@ int main( int argc, char *argv[] )
                         nextButton.resize(window.getSize());
                         runButton.resize(window.getSize());
                         break;
-
-                    /*
-                    // This is for demo only
-                    // When the user enters any letter we show it and change the texture of a cell
-                    case sf::Event::TextEntered:
-                        // Update next cell to change the texture
-                        grid.changeCellTexture( posToChangeTexture, {2,0} );
-
-                        // Update the cell to change next
-                        posToChangeTexture.x += 1;
-                        if (posToChangeTexture.x >= new_problem.row())
-                        {
-                            posToChangeTexture.x = 0;
-                            posToChangeTexture.y += 1;
-                            if (posToChangeTexture.y >= new_problem.column())
-                                posToChangeTexture = {0,0};
-                        }
-                        break;
-                    */
+                                        
                     // Listen for mouse wheel scroll to zoom in/out the camera
-
                     case sf::Event::MouseWheelScrolled:
                     {
                         float offsetFactor = event.mouseWheelScroll.delta * 10.0f;
@@ -156,6 +147,17 @@ int main( int argc, char *argv[] )
                     // When the user releases the mouse button we have to stop
                     // updating the camera according to the mouse
                     case sf::Event::MouseButtonReleased:
+                        if( !shortestPathFinder.nextIteration() )
+                        {
+                            grid.changeCellTexture( shortestPathFinder.lastAdditionToClose , {2,1} );
+                            for( const auto& pos : shortestPathFinder.lastAdditionsToOpen )
+                                grid.changeCellTexture( pos , {1,1} );
+                        }
+                        else
+                        {
+                            std::cerr << "\nFinished\n";                            
+                        }
+
                         isMousePressed = false;
                         break;
                 }
@@ -167,7 +169,7 @@ int main( int argc, char *argv[] )
             {
                 window.close();
             }
-
+            
             // Reset camera view on Ctrl + R
             if( sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)
             &&  sf::Keyboard::isKeyPressed(sf::Keyboard::R) )

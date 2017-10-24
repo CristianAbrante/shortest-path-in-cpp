@@ -12,7 +12,10 @@
 using HeuristicFunction = std::function<double(int, int, int, int)>;
 
 const std::vector<HeuristicFunction> heuristicFunctions = {
-    [](int x, int y, int endX, int endY){ return 0; }
+    [](int x, int y, int endX, int endY){ return 0; },
+    [](int x, int y, int endX, int endY){ return ( std::max( std::abs(endX - x), std::abs(endY - y) ) ) ; },
+    [](int x, int y, int endX, int endY){ return ( std::abs(endX - x) + std::abs(endY - y) ); },
+    [](int x, int y, int endX, int endY){ return std::sqrt( std::pow(endX - x, 2) + std::pow(endY - y, 2) ); }    
 };
 
 
@@ -69,7 +72,7 @@ class NodeSet
             }
     }
     
-    // Returns whether the element was already in the set or not
+    // Returns whether the element was inserted or not
     bool insertAndKeepMinimum( const Node& n ) 
     {
         auto oldElement = find( n );
@@ -80,13 +83,16 @@ class NodeSet
             nodes_.push_back( n );
             return true;
         }
-        // If it was already in the set we keep the minimum
+        // If the node was already in the set and the new one
+        // is better, we put the new one and return true because
+        // we inserted it
         if( n < *oldElement )
         {
             nodes_.erase( oldElement );
             nodes_.push_back( n );
+            return true;
         }
-
+        // If the old one remains we return false
         return false;        
     }
     
@@ -113,13 +119,13 @@ class AStar
     
   public:
     AStar(
-        unsigned N, unsigned M,
+        unsigned M, unsigned N,
         unsigned startX, unsigned startY, 
         unsigned endX, unsigned endY,
         const NodeSet& obstacles,
         unsigned h
     ):
-      N_( N ), M_( M ), 
+      M_( M ), N_( N ),
       h_( (h < heuristicFunctions.size()) ? h : 0 ),
       finished_( false ),
       startNode_(
@@ -129,10 +135,12 @@ class AStar
       endNode_( endX, endY, 0 ),
       obstacles_( obstacles )
     {
-        startNode_.updateCost( 0.0 );        
+        startNode_.updateCost( 0.0 );
+        openSet_.insert( startNode_ );
     }
+    
       
-    bool nextIteration()
+    bool nextIteration( bool debugInfo = true )
     {
         lastAdditionToClose = {};
         lastAdditionsToOpen.clear();
@@ -141,10 +149,11 @@ class AStar
         // so lets make sure that we have the space needed.
         lastAdditionsToOpen.reserve( Node::NEIGHBOURS.size() );
         
-        if( finished_ ) 
+        // If for some reason this method is called when the algorithm is already done
+        if( finished_ )
             return true;
         
-        // Check if the open set has no elements
+        // Check if the open set has no elements -> no solution
         if( openSet_.empty() )
         {
             finished_ = true;
@@ -154,19 +163,26 @@ class AStar
         // Get node with lowest f value
         auto current = openSet_.getLowest();
         
-        // Check if current node is the goal
+        // Info for debugging
+        if( debugInfo )
+        {
+            std::cerr << "Current pos: (" << current.pos().x << ',' << current.pos().y << ")\n";
+            std::cerr << "Cost: " << current.g() << ", h: " << current.h() << ", f: " << current.f() << '\n';            
+        }
+        
+        // Check if current node is the goal -> done with solution
         if( current == endNode_ )
         {
-            // TODO: build shortest path to goal
+            // TODO: build shortest path
             finished_ = true;
             return true;
         }
-        
+
         // Erase current node from open set and add it to the close set
         openSet_.erase( current );
         closeSet_.insert( current );
         lastAdditionToClose = current.pos();
-        
+
         // Check current node neighbours
         for( int i = 0; i < Node::NEIGHBOURS.size(); ++i )
         {
@@ -175,11 +191,13 @@ class AStar
               , posY = pos.y + Node::NEIGHBOURS[i].y;
 
             // Checking boundaries. If this is not a valid node we skip it
-            if( posX <= 0  ||  posX >= M_  ||  posY <= 0  ||  posY >= N_ ) 
+            if( posX < 0  ||  posX >= M_  ||  posY < 0  ||  posY >= N_ ) 
                 continue;
 
             // Construct neighbour node
-            auto neighbour = Node( posX, posY, current.g() + 1, &current );
+            auto heuristicVal = heuristicFunctions[h_]( posX, posY, endNode_.pos().x, endNode_.pos().y );
+            auto neighbour = Node( posX, posY, heuristicVal, &current );
+            neighbour.updateCost( current.g() + 1 );
 
             // Checking obstacles. If this node is an obstacle we skip it
             if( obstacles_.contains(neighbour) )
@@ -192,8 +210,8 @@ class AStar
   
             // Try to add neighbour to the open set. If it is already in the
             // open set we update the cost of it to the minimum one.
-            // If it was a new node this will return true and we 
-            // have to keep track of it in the last additions
+            // If the node was inserted this method will return true
+            // If the old node remains because is better, this will return false
             if( openSet_.insertAndKeepMinimum( neighbour ) )
                 lastAdditionsToOpen.push_back( neighbour.pos() );
        }
