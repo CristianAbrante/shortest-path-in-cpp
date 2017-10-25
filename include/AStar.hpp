@@ -17,187 +17,56 @@ const std::vector<HeuristicFunction> heuristicFunctions = {
     [](int x, int y, int endX, int endY){ return std::sqrt( std::pow(endX - x, 2) + std::pow(endY - y, 2) ); }    
 };
 
-// For what we need, we don't have to have a super efficient algorithm, so we
-// implemented the set with a simple vector right now.
-class NodeSet
-{
-  private:
-    std::vector<Node*> nodes_;
-
-  private:
-    // Returns the position of the element in nodes_. Or -1 if not found
-    int find( Node *toFind )const
-    {
-        if( toFind == nullptr) return -1;
-
-        int pos = -1;
-        for( int i = 0;  i < nodes_.size()  &&  pos == -1;  ++i )
-            if( nodes_[i] != nullptr  && (*(nodes_[i]) == *toFind) )
-                pos = i;
-
-        return pos;
-    }
- 
-  public:
-    NodeSet(): nodes_(){}
-    NodeSet( const NodeSet& ) = delete;
-    NodeSet* operator=( const NodeSet& ) = delete;
-
-    ~NodeSet()
-    {
-        for( int i = 0;  i < nodes_.size();  ++i )
-            if( nodes_[i] )
-                delete nodes_[i];
-    }
-    
-    bool empty()const
-    { 
-        return nodes_.empty(); 
-    }
-    
-    bool contains( Node *toFind )const
-    {
-        return( find(toFind) != -1 );
-    }
-    
-    // Returns the node with the minimum value
-    Node* getLowest()const
-    {
-        if( empty() )
-            return nullptr;
-
-        Node *min = nodes_[0];
-        for( int i = 1;  i < nodes_.size();  ++i )
-            if( *(nodes_[i]) < *min )
-                min = nodes_[i];
-
-        return min;
-    }
-    
-    // Returns whether the element was inserted or not
-    bool insert( Node *toInsert )
-    {
-        if( contains(toInsert) )
-            return false;
-        
-        nodes_.push_back( new Node(*toInsert) );
-        return true;
-    }
-
-    // This will push_back a pointer Node to nodes_.
-    // That pointer points to 'toTake', it does not own it unlike insert().
-    bool take( Node *toTake )
-    {
-        if( contains(toTake) )
-            return false;
-        
-        nodes_.push_back( toTake );
-        return true;
-    }
-
-    // Does not delete the element. It only removes it from nodes_
-    void remove( Node *toErase )
-    {
-        for( int i = 0;  i < nodes_.size();  ++i )
-            if( *(nodes_[i]) == *toErase )
-            {
-                nodes_.erase( nodes_.begin() + i );
-                break;
-            }
-    }
-    
-    // Returns whether the element was inserted/updated or not
-    bool insertAndKeepMinimum( Node *n ) 
-    {
-        if( n == nullptr ) 
-            throw std::invalid_argument("Cannot insert null");
-        
-        int oldElementPos = find( n );
-        
-        // If it is a new element we insert it and return true
-        if( oldElementPos == -1 )
-        {
-            nodes_.push_back( new Node( *n ) );
-            return true;
-        }
-        // If the node was already in the set and the new one
-        // is better, we update the node (only cost and pointer to parent
-        // is needed to update because they are the same nodes so everything else
-        // stays the same)
-        if( *n < *(nodes_[oldElementPos]) )
-        {
-            nodes_[oldElementPos]->updateCost( n->g() )
-                                 ->updateParent( n->parent() );
-            return true;
-        }
-        // If the old one remains equal we return false
-        return false;
-    }
-    
-};
-
 
 class AStar
 {
   private:
-    NodeSet openSet_
-          , closeSet_;
-    const NodeSet& obstacles_; //<-- TODO: This has to be handle better.
+    PathSet openSet_
+          , closeSet_
+          , obstacles_;
     int h_;  // Position of the heuristic function array
     bool finished_;
-    Node *startNode_
-       , *endNode_;
+    Path startNode_
+       , endNode_;
     unsigned N_
            , M_;
+    std::vector<sf::Vector2u> shortestPath_;
 
   public:
     std::vector<sf::Vector2u> lastAdditionsToOpen;
     sf::Vector2u lastAdditionToClose;
-
-  private:
-    // TODO: return the path
-    void buildShortestPath( Node *goal )
-    {
-        Node *current = goal;
-        while( !( *current == *startNode_ ) )
-        {
-            std::cerr << '\n' << current->pos().x << ',' << current->pos().y;
-            current = current->parent();
-        }
-        std::cerr << '\n' << startNode_->pos().x << ',' << startNode_->pos().y;
-    }
 
   public:
     AStar(
         unsigned M, unsigned N,
         unsigned startX, unsigned startY, 
         unsigned endX, unsigned endY,
-        const NodeSet& obstacles,
+        const PathSet& obstacles,
         unsigned h
     ):
       M_( M ), N_( N ),
       h_( (h < heuristicFunctions.size()) ? h : 0 ),
       finished_( false ),
-      startNode_( nullptr ),
-      endNode_( nullptr ),
+      startNode_(),
+      endNode_(),
       obstacles_( obstacles )
     {
-        startNode_ = new Node (
-            startX, startY,
+        startNode_.update(
+            {startX, startY},
+            0,
             heuristicFunctions[h](startX, startY, endX, endY)
         );
-        endNode_ = new Node( endX, endY, 0 );
+        endNode_.update(
+            {endX, endY},
+            0,
+            0            
+        );
 
-        startNode_->updateCost( 0.0 );
         openSet_.insert( startNode_ );
     }
+      
+    const std::vector<sf::Vector2u>& getShortestPath()const{ return shortestPath_; }
 
-    ~AStar()
-    {
-        if( startNode_ ) delete startNode_;
-        if( endNode_ ) delete endNode_;
-    }
-        
     bool nextIteration( bool debugInfo = true )
     {
         lastAdditionToClose = {};
@@ -219,33 +88,33 @@ class AStar
         }
         
         // Get node with lowest f value
-        Node *current = openSet_.getLowest();
+        Path current = openSet_.getLowest();
         
         // Info for debugging
         if( debugInfo )
         {
-            std::cerr << "Current pos: (" << current->pos().x << ',' << current->pos().y << ")\n";
-            std::cerr << "Cost: " << current->g() << ", h: " << current->h() << ", f: " << current->f() << '\n';            
+            std::cerr << "Current pos: (" << current.pos().x << ',' << current.pos().y << ")\n";
+            std::cerr << "Cost: " << current.g() << ", h: " << current.h() << ", f: " << current.f() << '\n';            
         }
         
-        // Check if current node is the goal -> done with solution
-        if( *current == *endNode_ )
+        // Check if current node is the goal -> finished with solution
+        if( current == endNode_ )
         {
-            // TODO: build shortest path
-            buildShortestPath( current );
+            // Build shortest path and finish
+            shortestPath_ = current.getPath();
             finished_ = true;
             return true;
         }
 
         // Erase current node from open set and add it to the close set
         openSet_.remove( current );
-        closeSet_.take( current );
-        lastAdditionToClose = current->pos();
+        closeSet_.insertAndKeepMinimum( current );
+        lastAdditionToClose = current.pos();
 
         // Check current node neighbours
         for( int i = 0; i < Node::NEIGHBOURS.size(); ++i )
         {
-            const auto& pos = current->pos();
+            const auto& pos = current.pos();
             int posX = pos.x + Node::NEIGHBOURS[i].x
               , posY = pos.y + Node::NEIGHBOURS[i].y;
 
@@ -253,26 +122,30 @@ class AStar
             if( posX < 0  ||  posX >= M_  ||  posY < 0  ||  posY >= N_ ) 
                 continue;
 
-            // Construct neighbour node
-            auto heuristicVal = heuristicFunctions[h_]( posX, posY, endNode_->pos().x, endNode_->pos().y );
-            auto neighbour = Node( posX, posY, heuristicVal, current );
-            neighbour.updateCost( current->g() + 1 );
+            // Construct new path
+            double heuristicVal = heuristicFunctions[h_]( posX, posY, endNode_.pos().x, endNode_.pos().y );
+            Path newPath = current;
+            newPath.update(
+                {(unsigned)posX, (unsigned)posY},
+                1, heuristicVal 
+            );
 
             // Checking obstacles. If this node is an obstacle we skip it
-            if( obstacles_.contains(&neighbour) )
+            if( obstacles_.contains(newPath) )
                 continue;
                         
-            // If the neighbour is already in the close set we do nothing
-            // because it is already optimal
-            if( closeSet_.contains(&neighbour) )
+            // If the new path is already in the close set and
+            // the one there is better, we do nothing with this path
+            Path pathInCloseSet = closeSet_.get(newPath);
+            if( !pathInCloseSet.empty()  &&  pathInCloseSet < newPath )
                 continue;
   
-            // Try to add neighbour to the open set. If it is already in the
+            // Try to add the new path to the open set. If it is already in the
             // open set we update the cost of it to the minimum one.
             // If the node was inserted this method will return true
             // If the old node remains because is better, this will return false
-            if( openSet_.insertAndKeepMinimum( &neighbour ) )
-                lastAdditionsToOpen.push_back( neighbour.pos() );
+            if( openSet_.insertAndKeepMinimum( newPath ) )
+                lastAdditionsToOpen.push_back( newPath.pos() );
        }
     }
     

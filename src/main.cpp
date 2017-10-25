@@ -22,7 +22,6 @@ int main( int argc, char *argv[] )
 
     try
     {
-
         std::string file_name;
 
         if (argc >= 2) {
@@ -47,15 +46,15 @@ int main( int argc, char *argv[] )
             { 0, 0 }                      // The position of the default sprite image in the sheet
         );
 
-        NodeSet obstacles;
         // Set obstacles in grid
+        // And store them in a set to pass to the shortest path algorithm
+        PathSet obstacles;
         for( int i = 0; i < new_problem.getNumberOfObstaces(); ++i )
         {
           const auto& pos = new_problem.getObstacle(i);
           grid.changeCellTexture( {(unsigned)pos.x, (unsigned)pos.y}, {2,0} );
 
-          Node node = {(unsigned)pos.x, (unsigned)pos.y};
-          obstacles.insert( &node );
+          obstacles.insert( Node((unsigned)pos.x, (unsigned)pos.y) );
         }
 
         // Set car in grid
@@ -101,8 +100,11 @@ int main( int argc, char *argv[] )
 
         // These variable are needed to track the mouse position to update the camera
         // when the user wants to move it with the mouse
-        bool isMousePressed = false;
         sf::Vector2i mousePositionWhenUserClicked;
+        bool isMousePressed = false
+            // Variable needed for knowing when the algorithm has to run
+           , runAlgorithmOnce = false
+           , nonInteractiveMode = false;
 
         while (window.isOpen())
         {
@@ -132,10 +134,10 @@ int main( int argc, char *argv[] )
                     case sf::Event::MouseButtonPressed:
                       // Check if user clicked a button
                       if (nextButton.isClicked(sf::Mouse::getPosition(window))) {
-                        std::cout << "Next button pressed!!" << '\n';
+                          runAlgorithmOnce = true;
                       }
                       if (runButton.isClicked(sf::Mouse::getPosition(window))) {
-                        std::cout << "Run button pressed!!" << '\n';
+                          nonInteractiveMode = true;
                       }
                       // If the mouse is clicked in the grid section, lets indicate
                       // that we have to update the camera relative to the mouse position.
@@ -148,17 +150,6 @@ int main( int argc, char *argv[] )
                     // When the user releases the mouse button we have to stop
                     // updating the camera according to the mouse
                     case sf::Event::MouseButtonReleased:
-                        if( !shortestPathFinder.nextIteration() )
-                        {
-                            grid.changeCellTexture( shortestPathFinder.lastAdditionToClose , {2,1} );
-                            for( const auto& pos : shortestPathFinder.lastAdditionsToOpen )
-                                grid.changeCellTexture( pos , {1,1} );
-                        }
-                        else
-                        {
-                            std::cerr << "\nFinished\n";                            
-                        }
-
                         isMousePressed = false;
                         break;
                 }
@@ -177,7 +168,7 @@ int main( int argc, char *argv[] )
             {
                 gridCamera.resetCamera();
             }
-
+            
             // Update camera position from user mouse input
             if( isMousePressed )
             {
@@ -191,6 +182,23 @@ int main( int argc, char *argv[] )
 
             // Update grid camera position and zoom from the user keyboard input
             updateGridCameraFromKeyboardInput( gridCamera );
+            
+            // Run algorithm
+            if( runAlgorithmOnce || nonInteractiveMode )
+            {
+                if( !shortestPathFinder.nextIteration() )
+                {
+                    grid.changeCellTexture( shortestPathFinder.lastAdditionToClose , {2,1} );
+                    for( const auto& pos : shortestPathFinder.lastAdditionsToOpen )
+                        grid.changeCellTexture( pos , {1,1} );
+                }
+                else
+                {
+                    std::cerr << "\nFinished\n";
+                }               
+                
+                runAlgorithmOnce = false;
+            }
 
             // Clear screen
             window.clear( sf::Color::White );
