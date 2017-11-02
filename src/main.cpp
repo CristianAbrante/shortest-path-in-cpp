@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdexcept> // std::invalid_argument
 #include <fstream>
+#include <vector>
 
 #include "Button.hpp"
 #include "ClassGraphicGrid.hpp"
@@ -46,15 +47,15 @@ int main( int argc, char *argv[] )
             { 0, 0 }                      // The position of the default sprite image in the sheet
         );
 
-        // Set obstacles in grid
-        // And store them in a set to pass to the shortest path algorithm
-        PathSet obstacles;
+        // Show obstacles in grid
+        // And store them to pass to the shortest path algorithm
+        std::vector<bool> obstacles( grid.numCols() * grid.numRows() );
         for( int i = 0; i < new_problem.getNumberOfObstaces(); ++i )
         {
           const auto& pos = new_problem.getObstacle(i);
           grid.changeCellTexture( {(unsigned)pos.x, (unsigned)pos.y}, {2,0} );
 
-          obstacles.insert( Node((unsigned)pos.x, (unsigned)pos.y) );
+          obstacles[ pos.x * grid.numCols() + pos.y ] = true;
         }
 
         // Set car in grid

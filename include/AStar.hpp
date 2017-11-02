@@ -22,8 +22,8 @@ class AStar
 {
   private:
     PathSet openSet_
-          , closeSet_
-          , obstacles_;
+          , closeSet_;
+    std::vector<bool> obstacles_;
     int h_;  // Position of the heuristic function array
     bool finished_;
     Path startNode_
@@ -41,7 +41,7 @@ class AStar
         unsigned M, unsigned N,
         unsigned startX, unsigned startY, 
         unsigned endX, unsigned endY,
-        const PathSet& obstacles,
+        const std::vector<bool>& obstacles,
         unsigned h
     ):
       M_( M ), N_( N ),
@@ -130,8 +130,8 @@ class AStar
                 1, heuristicVal 
             );
 
-            // Checking obstacles. If this node is an obstacle we skip it
-            if( obstacles_.contains(newPath) )
+            // Checking obstacles. If this node is an obstacle we skip it            
+            if( obstacles_[ posX * N_ + posY ] )
                 continue;
                         
             // If the new path is already in the close set and
