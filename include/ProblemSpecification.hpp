@@ -11,8 +11,8 @@
 // struct that defines the position.
 
 typedef struct {
-    int x;
-    int y;
+    unsigned int x;
+    unsigned int y; 
 } position;
 
 enum heuristicsName {HEURISTIC_1, HEURISTIC_2, HEURISTIC_3};
