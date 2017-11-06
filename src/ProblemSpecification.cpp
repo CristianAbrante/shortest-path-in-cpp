@@ -13,7 +13,7 @@ problemSpecification::problemSpecification(std::string &file_name){
   if(input_text_file.is_open()) {
 
     // We read the heusristic number from file and then we cast it
-    // to our unum configuration.
+    // to our enum configuration.
     int heuristic_number;
     input_text_file >> heuristic_number;
     heuristic_ = static_cast<heuristicsName>(heuristic_number);
@@ -22,13 +22,21 @@ problemSpecification::problemSpecification(std::string &file_name){
     input_text_file >> number_of_colums_;
     input_text_file >> number_of_rows_ ;
 
+    position car_position;
     // We read the intial car position.
-    input_text_file >> car_position_.x;
-    input_text_file >> car_position_.y;
+    input_text_file >> car_position.x;
+    input_text_file >> car_position.y;
 
+    // We store the car position in vector.
+    car_position_ = vectorPos(car_position);
+
+    position final_position;
     // We read the final position.
-    input_text_file >> final_position_.x;
-    input_text_file >> final_position_.y;
+    input_text_file >> final_position.x;
+    input_text_file >> final_position.y;
+
+    // We store the final position in vector.
+    final_position_ = vectorPos(final_position);
 
     // We read the number of obstacles that user want.
     int number_of_obstacles;
@@ -37,20 +45,19 @@ problemSpecification::problemSpecification(std::string &file_name){
 
     if (variablesAreConfigured(number_of_obstacles)) {
 
-      obstacle_positions_.resize(number_of_obstacles);
-
       int obstacles_entered = 0;
+
       while (!input_text_file.eof() && obstacles_entered < number_of_obstacles) {
 
-        int x_pos, y_pos;
-        input_text_file >> x_pos >> y_pos;
+        position obstacle_pos;
+        input_text_file >> obstacle_pos.x;
+        input_text_file >> obstacle_pos.y;
 
-        if (!input_text_file.eof() && !positionIsIntroduced({x_pos, y_pos}, obstacles_entered) ){
-          obstacle_positions_[obstacles_entered].x = x_pos;
-          obstacle_positions_[obstacles_entered].y = y_pos;
-
+        if (!input_text_file.eof() && !positionIsIntroduced(vectorPos(obstacle_pos)) ){
+          obstacle_positions_.push_back(vectorPos(obstacle_pos));
           obstacles_entered++;
         }
+
       }
 
       if (obstacles_entered < number_of_obstacles) {
@@ -59,6 +66,7 @@ problemSpecification::problemSpecification(std::string &file_name){
 
 
     } else {
+
       input_text_file.close();
       throw std::out_of_range("One of the arguments is out of range.");
     }
@@ -83,11 +91,11 @@ int problemSpecification::columns(void) const {
 }
 
 position problemSpecification::car_position(void) const {
-    return car_position_;
+    return matrixPos(car_position_);
 }
 
 position problemSpecification::final_position(void) const {
-    return final_position_;
+    return matrixPos(final_position_);
 }
 
 int problemSpecification::getNumberOfObstaces(void) const {
@@ -95,68 +103,16 @@ int problemSpecification::getNumberOfObstaces(void) const {
 }
 
 position problemSpecification::getObstacle(int i) const {
-    return obstacle_positions_[i];
+    return matrixPos(obstacle_positions_[i]);
 }
 
 // PRIVATE METHODS.
 
-bool problemSpecification::variablesAreConfigured(int number_of_obstacles) const {
-
-  bool variables_are_configured = true;
-
-  if (heuristic_ < 0 || heuristic_ >= NUMBER_OF_HEURISTICS)
-    variables_are_configured = false;
-
-  if (number_of_rows_ < 0 || number_of_rows_ > MAX_ROW)
-    variables_are_configured = false;
-
-  if (number_of_colums_ < 0 || number_of_colums_ > MAX_COLUMN)
-    variables_are_configured = false;
-
-  if (car_position_.x < 0 || car_position_.x >= number_of_colums_ ||
-      car_position_.y < 0 || car_position_.y >= number_of_colums_)
-    variables_are_configured = false;
-
-  if (final_position_.x < 0 || final_position_.x >= number_of_colums_ ||
-      final_position_.y < 0 || final_position_.y >= number_of_colums_)
-    variables_are_configured = false;
-
-  if (number_of_obstacles < 0 || number_of_obstacles > (number_of_rows_ * number_of_colums_ - 2))
-    variables_are_configured = false;
-
+int problemSpecification::vectorPos(const position matrix_position) const {
+  return matrix_position.y + number_of_colums_ * matrix_position.x;
 }
 
-void problemSpecification::generateRandomObstacles(int obstacles_to_generate) {
-
-  std::random_device rd;     // only used once to initialise (seed) engine
-  std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-  std::uniform_int_distribution<int> uni(0, rows() * columns() - 1); // guaranteed unbiased
-
-  int current_position = 0;
-
-  int vector_index = obstacle_positions_.size() - obstacles_to_generate;
-
-  int i = 0;
-  while (i < obstacles_to_generate) {
-
-    int random_vector_position = uni(rng);
-
-    current_position = (current_position + random_vector_position) % (rows() * columns());
-
-    position matrix_position = matrixPos(current_position);
-
-    if (!positionIsIntroduced(matrix_position, vector_index)) {
-      obstacle_positions_[vector_index].x = matrix_position.x;
-      obstacle_positions_[vector_index].y = matrix_position.y;
-      vector_index++;
-      i++;
-    }
-
-  }
-
-}
-
-position problemSpecification::matrixPos(int vector_position) const {
+position problemSpecification::matrixPos(const int vector_position) const {
 
   position matrix_pos;
 
@@ -166,26 +122,100 @@ position problemSpecification::matrixPos(int vector_position) const {
   return matrix_pos;
 }
 
-bool problemSpecification::positionIsIntroduced(position to_check_position, int obstacle_entered) const {
 
-  if (to_check_position.x < 0 || to_check_position.x >= number_of_colums_ ||
-      to_check_position.y < 0 || to_check_position.y >= number_of_rows_)
+bool problemSpecification::variablesAreConfigured(int number_of_obstacles) const {
+
+  // Check if the problem settings are in the range.
+
+  if (heuristic_ < 0 || heuristic_ >= NUMBER_OF_HEURISTICS)
+    return false;
+
+  if (number_of_rows_ < 0 || number_of_rows_ > MAX_ROW)
+    return false;
+
+  if (number_of_colums_ < 0 || number_of_colums_ > MAX_COLUMN)
+    return false;
+
+  if (car_position_ < 0 || car_position_ >= number_of_colums_ * number_of_rows_)
+    return false;
+
+  if (final_position_ < 0 || final_position_ >= number_of_colums_ * number_of_rows_)
+    return false;
+
+  if (number_of_obstacles < 0 || number_of_obstacles > (number_of_rows_ * number_of_colums_ - 2))
+    return false;
+
+  return true;
+}
+
+bool problemSpecification::positionIsIntroduced(int to_check_position) const {
+
+  // Check if position is on the vector range.
+  if (to_check_position < 0 || to_check_position >= number_of_colums_ * number_of_rows_)
       return false;
 
-  for (int i = 0; i < obstacle_entered; ++i) {
-    if (to_check_position.x == obstacle_positions_[i].x &&
-        to_check_position.y == obstacle_positions_[i].y )
-          return true;
+  // Check if position is alredy in the vector
+  for (int i = 0; i < obstacle_positions_.size(); ++i) {
+    if (obstacle_positions_[i] == to_check_position)
+        return true;
   }
 
-  if (to_check_position.x == car_position_.x &&
-      to_check_position.y == car_position_.y )
-      return true;
-
-  if (to_check_position.x == final_position_.x &&
-      to_check_position.y == final_position_.y )
+  // Check if position is the car position or the final position.
+  if (to_check_position == car_position_ || to_check_position == final_position_)
       return true;
 
   return false;
+
+}
+
+
+void problemSpecification::generateRandomObstacles(int obstacles_to_generate) {
+
+  // Vector that store all the posible obstacle positions.
+  std::vector<int> posible_obstacles;
+
+  // filling the vector with all the positions.
+  for (int i = 0; i < number_of_rows_ * number_of_colums_; ++i)
+    posible_obstacles.push_back(i);
+
+  // erasing objets position previously introduced.
+  // Also we erase car and final position.
+  eraseIntroducedPositions(posible_obstacles);
+
+  // We shuffle the vector.
+
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::shuffle(posible_obstacles.begin(), posible_obstacles.end(), std::default_random_engine(seed));
+
+  // We introudce in the vector the random obstacles.
+  for (int i = 0; i < obstacles_to_generate; ++i)
+    obstacle_positions_.push_back(posible_obstacles[i]);
+
+}
+
+void problemSpecification::eraseIntroducedPositions(std::vector<int> &posible_obstacles) const {
+
+  // We erase all the posible obstacles from the vector.
+  for (auto obstacle : obstacle_positions_) {
+
+    if (*posible_obstacles.end() == obstacle) {
+        posible_obstacles.pop_back();
+    } else {
+      posible_obstacles.erase(posible_obstacles.begin() + obstacle);
+    }
+
+  }
+
+  if (*posible_obstacles.end() == car_position_) {
+    posible_obstacles.pop_back();
+  } else {
+    posible_obstacles.erase(posible_obstacles.begin() + car_position_);
+  }
+
+  if (*posible_obstacles.end() == final_position_) {
+    posible_obstacles.pop_back();
+  } else {
+    posible_obstacles.erase(posible_obstacles.begin() + final_position_);
+  }
 
 }

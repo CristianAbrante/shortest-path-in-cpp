@@ -2,6 +2,7 @@
 #include <stdexcept> // std::invalid_argument
 #include <fstream>
 #include <vector>
+#include <time.h>
 
 #include "Button.hpp"
 #include "ClassGraphicGrid.hpp"
@@ -117,6 +118,9 @@ int main( int argc, char *argv[] )
            , nonInteractiveMode = false
            , algorithmHadFinished = false;
 
+        int number_of_steps = 0;
+        clock_t timer;
+
         while (window.isOpen())
         {
             // Event loop
@@ -151,6 +155,7 @@ int main( int argc, char *argv[] )
                       if (runButton.isClicked(sf::Mouse::getPosition(window))) {
                         std::clog << "Run Button pressed" << std::endl;
                           nonInteractiveMode = true;
+                          timer = clock();
                       }
                       // If the mouse is clicked in the grid section, lets indicate
                       // that we have to update the camera relative to the mouse position.
@@ -201,31 +206,39 @@ int main( int argc, char *argv[] )
             {
                 if( !shortestPathFinder.nextIteration() )
                 {
-                    // Change the texture into yellow and green path.
-                    grid.changeCellTexture( shortestPathFinder.lastAdditionToClose , {2,1} );
-                    for( const auto& pos : shortestPathFinder.lastAdditionsToOpen )
-                        grid.changeCellTexture( pos , {1,1} );
 
-                    grid.changeCellTexture(
-                    {
-                        new_problem.car_position().x,
-                        new_problem.car_position().y
-                    },
-                        {2, 2}
-                    );
+                    number_of_steps++;
 
-                    grid.changeCellTexture(
-                    {
-                        new_problem.final_position().x,
-                        new_problem.final_position().y
-                    },
-                        {0, 1}
-                    );
 
+                      // Change the texture into yellow and green path.
+                      grid.changeCellTexture( shortestPathFinder.lastAdditionToClose , {2,1} );
+                      for( const auto& pos : shortestPathFinder.lastAdditionsToOpen )
+                          grid.changeCellTexture( pos , {1,1} );
+
+                      grid.changeCellTexture(
+                      {
+                          new_problem.car_position().x,
+                          new_problem.car_position().y
+                      },
+                          {2, 2}
+                      );
+
+                      grid.changeCellTexture(
+                      {
+                          new_problem.final_position().x,
+                          new_problem.final_position().y
+                      },
+                          {0, 1}
+                      );
+                  
                 }
                 else
                 {
-                    std::cerr << "\nFinished\n";
+                  timer = clock() - timer;
+                    std::cout << "\nFinished\n";
+                    std::cout << "It has taken: " << number_of_steps << " steps\n";
+                    std::cout << "With a path size of " << shortestPathFinder.getShortestPath().size() << " \n";
+                    std::cout << "In " << (float)timer/CLOCKS_PER_SEC << " seconds" << '\n';
 
                     // Change the texture to the blue path
                     for( const auto& pos : shortestPathFinder.getShortestPath() )
@@ -280,6 +293,7 @@ int main( int argc, char *argv[] )
 
             // Display drawings
             window.display();
+
         }
     }
     catch( const std::invalid_argument& ia )
