@@ -22,8 +22,8 @@ To execute the program you must execute the following command, been in the `shor
 ## `Problem-file` configuration
 The configuration of this file is as it follows:
 * number for heuristic to use: [0 - 3]
-* number of columns and rows of the problem:
-* position of the car: 
-* end position:
-* number of obstacles:
-* 
+* number of columns and rows of the problem.
+* position of the car. 
+* end position.
+* number of obstacles.
+* Position of obstacles
