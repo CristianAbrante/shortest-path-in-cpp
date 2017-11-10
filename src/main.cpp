@@ -1,13 +1,14 @@
-
-
 #include <iostream>
 #include <stdexcept> // std::invalid_argument
 #include <fstream>
+#include <vector>
+#include <time.h>
 
 #include "Button.hpp"
 #include "ClassGraphicGrid.hpp"
 #include "GridCamera.hpp"
 #include "ProblemSpecification.hpp"
+#include "AStar.hpp"
 
 
 // This is defined below main
@@ -23,7 +24,6 @@ int main( int argc, char *argv[] )
 
     try
     {
-
         std::string file_name;
 
         if (argc >= 2) {
@@ -42,18 +42,21 @@ int main( int argc, char *argv[] )
                 window.getSize().y - 140
             },
             new_problem.rows(),
-            new_problem.columns(),           // Number of columns and rows of the grid
-            "sprites/sprite-sheet2.png",   // Location of the sprite sheet
+            new_problem.columns(),
+            "sprites/sprite-sheet.png",   // Location of the sprite sheet
             { 32, 32 },                   // The size of a single sprite image in the sheet
             { 0, 0 }                      // The position of the default sprite image in the sheet
         );
 
-        // Set obstacles in grid
+        // Show obstacles in grid
+        // And store them to pass to the shortest path algorithm
+        std::vector<bool> obstacles( grid.numCols() * grid.numRows() );
         for( int i = 0; i < new_problem.getNumberOfObstaces(); ++i )
         {
-          //std::clog << new_problem.getObstacle(i).x << " " << new_problem.getObstacle(i).y << '\n';
           const auto& pos = new_problem.getObstacle(i);
-          grid.changeCellTexture( {pos.x, pos.y}, {2,0} );
+          grid.changeCellTexture( {(unsigned)pos.x, (unsigned)pos.y}, {2,0} );
+
+          obstacles[ pos.x * grid.numCols() + pos.y ] = true;
         }
 
         // Set car in grid
@@ -74,6 +77,14 @@ int main( int argc, char *argv[] )
           {0, 1}
         );
 
+        AStar shortestPathFinder(
+            new_problem.rows(), new_problem.columns(),
+            new_problem.car_position().x, new_problem.car_position().y,
+            new_problem.final_position().x, new_problem.final_position().y,
+            obstacles,
+            new_problem.heuristic() // Heuristic function to use
+        );
+
         // This object will allow us to zoom and move the "camera" that shows the grid
         GridCamera gridCamera( grid );
 
@@ -85,14 +96,30 @@ int main( int argc, char *argv[] )
         }
 
         // Create buttons
-        Button nextButton({100, grid.endPos().y}, window.getSize(), buttonsTexture, {1,2}, {1,0});
-        Button runButton({window.getSize().x - 100 - nextButton.getSize().x, grid.endPos().y},  window.getSize(),
+        Button nextButton({100.0, (float)grid.endPos().y}, window.getSize(), buttonsTexture, {1,2}, {1,0});
+        Button runButton({(float)(window.getSize().x - 100 - nextButton.getSize().x), (float)grid.endPos().y},  window.getSize(),
                          buttonsTexture, {1,2}, {0,0});
+
+        // Load texture of the final button.
+        sf::Texture final_buttons_texture;
+        if ( !final_buttons_texture.loadFromFile( "sprites/final-button.png" ) ) {
+           throw std::invalid_argument("Error loading sprites");
+        }
+
+        Button finalButton( {(window.getSize().x / 2 - final_buttons_texture.getSize().x / 2),
+          (float)(grid.endPos().y - 100)}, window.getSize(), final_buttons_texture, {1,2}, {0,0});
 
         // These variable are needed to track the mouse position to update the camera
         // when the user wants to move it with the mouse
-        bool isMousePressed = false;
         sf::Vector2i mousePositionWhenUserClicked;
+        bool isMousePressed = false
+            // Variable needed for knowing when the algorithm has to run
+           , runAlgorithmOnce = false
+           , nonInteractiveMode = false
+           , algorithmHadFinished = false;
+
+        int number_of_steps = 0;
+        clock_t timer;
 
         while (window.isOpen())
         {
@@ -111,26 +138,7 @@ int main( int argc, char *argv[] )
                         runButton.resize(window.getSize());
                         break;
 
-                    /*
-                    // This is for demo only
-                    // When the user enters any letter we show it and change the texture of a cell
-                    case sf::Event::TextEntered:
-                        // Update next cell to change the texture
-                        grid.changeCellTexture( posToChangeTexture, {2,0} );
-
-                        // Update the cell to change next
-                        posToChangeTexture.x += 1;
-                        if (posToChangeTexture.x >= new_problem.row())
-                        {
-                            posToChangeTexture.x = 0;
-                            posToChangeTexture.y += 1;
-                            if (posToChangeTexture.y >= new_problem.column())
-                                posToChangeTexture = {0,0};
-                        }
-                        break;
-                    */
                     // Listen for mouse wheel scroll to zoom in/out the camera
-
                     case sf::Event::MouseWheelScrolled:
                     {
                         float offsetFactor = event.mouseWheelScroll.delta * 10.0f;
@@ -141,10 +149,13 @@ int main( int argc, char *argv[] )
                     case sf::Event::MouseButtonPressed:
                       // Check if user clicked a button
                       if (nextButton.isClicked(sf::Mouse::getPosition(window))) {
-                        std::cout << "Next button pressed!!" << '\n';
+                        std::clog << "Next Button pressed" << std::endl;
+                          runAlgorithmOnce = true;
                       }
                       if (runButton.isClicked(sf::Mouse::getPosition(window))) {
-                        std::cout << "Run button pressed!!" << '\n';
+                        std::clog << "Run Button pressed" << std::endl;
+                          nonInteractiveMode = true;
+                          timer = clock();
                       }
                       // If the mouse is clicked in the grid section, lets indicate
                       // that we have to update the camera relative to the mouse position.
@@ -190,6 +201,73 @@ int main( int argc, char *argv[] )
             // Update grid camera position and zoom from the user keyboard input
             updateGridCameraFromKeyboardInput( gridCamera );
 
+            // Run algorithm
+            if( !algorithmHadFinished && (runAlgorithmOnce || nonInteractiveMode) )
+            {
+                if( !shortestPathFinder.nextIteration() )
+                {
+
+                    number_of_steps++;
+
+
+                      // Change the texture into yellow and green path.
+                      grid.changeCellTexture( shortestPathFinder.lastAdditionToClose , {2,1} );
+                      for( const auto& pos : shortestPathFinder.lastAdditionsToOpen )
+                          grid.changeCellTexture( pos , {1,1} );
+
+                      grid.changeCellTexture(
+                      {
+                          new_problem.car_position().x,
+                          new_problem.car_position().y
+                      },
+                          {2, 2}
+                      );
+
+                      grid.changeCellTexture(
+                      {
+                          new_problem.final_position().x,
+                          new_problem.final_position().y
+                      },
+                          {0, 1}
+                      );
+                  
+                }
+                else
+                {
+                  timer = clock() - timer;
+                    std::cout << "\nFinished\n";
+                    std::cout << "It has taken: " << number_of_steps << " steps\n";
+                    std::cout << "With a path size of " << shortestPathFinder.getShortestPath().size() << " \n";
+                    std::cout << "In " << (float)timer/CLOCKS_PER_SEC << " seconds" << '\n';
+
+                    // Change the texture to the blue path
+                    for( const auto& pos : shortestPathFinder.getShortestPath() )
+                        grid.changeCellTexture( pos , {0,2} );
+
+                    if (!shortestPathFinder.getShortestPath().empty()){
+                      grid.changeCellTexture(
+                      {
+                          new_problem.car_position().x,
+                          new_problem.car_position().y
+                      },
+                          {1, 2}
+                      );
+
+                      grid.changeCellTexture(
+                      {
+                          new_problem.final_position().x,
+                          new_problem.final_position().y
+                      },
+                          {0, 3}
+                      );
+                    }
+
+                    algorithmHadFinished = true;
+                }
+
+                runAlgorithmOnce = false;
+            }
+
             // Clear screen
             window.clear( sf::Color::White );
 
@@ -198,12 +276,24 @@ int main( int argc, char *argv[] )
             window.draw( grid );
             window.setView( window.getDefaultView() );
 
-            // Draw buttons
-            window.draw(nextButton);
-            window.draw(runButton);
+            if (!algorithmHadFinished) {
+              // Draw buttons
+              window.draw(nextButton);
+              window.draw(runButton);
+            } else {
+
+              window.draw(finalButton);
+
+              if (shortestPathFinder.getShortestPath().empty()){
+                finalButton.changeButtonTexture({1,0});
+                window.draw(finalButton);
+              }
+
+            }
 
             // Display drawings
             window.display();
+
         }
     }
     catch( const std::invalid_argument& ia )

@@ -2,24 +2,27 @@
 #ifndef IA_P1_PROBLEMSPECIFICATION_H
 #define IA_P1_PROBLEMSPECIFICATION_H
 
+#include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-// struct that defines the position.
-
+// struct that defines a position.
 typedef struct {
-    int x;
-    int y;
+    unsigned int x;
+    unsigned int y;
 } position;
 
-enum heuristicsName {HEURISTIC_1, HEURISTIC_2, HEURISTIC_3};
+// ENumeration of heuristics
+enum heuristicsName {NOT_HEUSRISTIC, HEURISTIC_1, HEURISTIC_2, HEURISTIC_3};
 
 // Number of heuristics to solve the problem.
-const int NUMBER_OF_HEURISTICS = 3;
+const int NUMBER_OF_HEURISTICS = 4;
 
+// Max size of the grid.
 const int MAX_COLUMN = 1000;
 const int MAX_ROW = 1000;
 
@@ -65,15 +68,18 @@ class problemSpecification {
   heuristicsName heuristic_;
   int number_of_colums_;
   int number_of_rows_;
-  position car_position_;
-  position final_position_;
-  std::vector<position> obstacle_positions_;
+  int car_position_;
+  int final_position_;
+  std::vector<int> obstacle_positions_;
+
+  position matrixPos(const int vector_position) const;
+  int vectorPos(const position matrix_position) const;
 
   bool variablesAreConfigured(int number_of_obstacles) const;
   void generateRandomObstacles(int obstacles_to_generate);
-  position matrixPos(int vector_position) const;
-  bool positionIsIntroduced(position to_check_position, int obstacle_entered) const;
 
+  bool positionIsIntroduced(int to_check_position) const;
+  void eraseIntroducedPositions(std::vector<int> &posible_obstacles) const;
 };
 
 #endif //IA_P1_PROBLEMSPECIFICATION_H

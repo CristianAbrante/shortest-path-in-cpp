@@ -27,6 +27,8 @@ class Button : public sf::Drawable {
 
   sf::Vector2f getSize(void) const;
 
+  void changeButtonTexture(const sf::Vector2u imageSelector);
+
   void draw(sf::RenderTarget &target, sf::RenderStates states) const;
 
 

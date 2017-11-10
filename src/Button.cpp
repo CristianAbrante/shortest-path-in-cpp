@@ -56,6 +56,16 @@ sf::Vector2f Button::getSize(void) const {
   return {currentButtonSize.width, currentButtonSize.height};
 }
 
+void Button::changeButtonTexture(const sf::Vector2u imageSelector) {
+
+  sf::IntRect textureSection = body.getTextureRect();
+
+  textureSection.top = imageSelector.x * textureSection.height;
+  textureSection.left = imageSelector.y * textureSection.width;
+
+  body.setTextureRect(textureSection);
+
+}
 
 void Button::draw(sf::RenderTarget &target, sf::RenderStates states) const {
 
